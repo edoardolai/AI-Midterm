@@ -64,36 +64,75 @@ def make_arena(arena_size=10, wall_height=1):
     p.createMultiBody(baseMass=0, baseCollisionShapeIndex=wall_collision_shape, baseVisualShapeIndex=wall_visual_shape, basePosition=[arena_size/2, 0, wall_height/2])
     p.createMultiBody(baseMass=0, baseCollisionShapeIndex=wall_collision_shape, baseVisualShapeIndex=wall_visual_shape, basePosition=[-arena_size/2, 0, wall_height/2])
 
+def run_sandbox():
+    p.setGravity(0, 0, -10)
 
-p.setGravity(0, 0, -10)
+    arena_size = 20
+    make_arena(arena_size=arena_size)
 
-arena_size = 20
-make_arena(arena_size=arena_size)
+    #make_rocks(arena_size=arena_size)
 
-#make_rocks(arena_size=arena_size)
+    mountain_position = (0, 0, -1)  # Adjust as needed
+    mountain_orientation = p.getQuaternionFromEuler((0, 0, 0))
+    p.setAdditionalSearchPath('shapes/')
+    # mountain = p.loadURDF("mountain.urdf", mountain_position, mountain_orientation, useFixedBase=1)
+    # mountain = p.loadURDF("mountain_with_cubes.urdf", mountain_position, mountain_orientation, useFixedBase=1)
 
-mountain_position = (0, 0, -1)  # Adjust as needed
-mountain_orientation = p.getQuaternionFromEuler((0, 0, 0))
-p.setAdditionalSearchPath('shapes/')
-# mountain = p.loadURDF("mountain.urdf", mountain_position, mountain_orientation, useFixedBase=1)
-# mountain = p.loadURDF("mountain_with_cubes.urdf", mountain_position, mountain_orientation, useFixedBase=1)
+    mountain = p.loadURDF("gaussian_pyramid.urdf", mountain_position, mountain_orientation, useFixedBase=1)
 
-mountain = p.loadURDF("gaussian_pyramid.urdf", mountain_position, mountain_orientation, useFixedBase=1)
+    #set camera position a bit further back to avoid scrolling manually
+    p.resetDebugVisualizerCamera(cameraDistance=15, cameraYaw=90, cameraPitch=-30, cameraTargetPosition=[0,0,0])
 
-# load creature from csv
-cr = creature.Creature(1)
-cr.update_dna(genome.Genome.from_csv("best_ever.csv"))
+    # load creature from csv
+    cr = creature.Creature(1)
+    cr.update_dna(genome.Genome.from_csv("best_ever.csv"))
 
-# save it to XML
-with open('test.urdf', 'w') as f:
-    f.write(cr.to_xml())
-# load it into the sim
-rob1 = p.loadURDF('test.urdf', (0, 0, 10))
+    # save it to XML
+    with open('test.urdf', 'w') as f:
+        f.write(cr.to_xml())
+    # load it into the sim
+    rob1 = p.loadURDF('test.urdf', (0, 0, 10))
 
 
-p.setRealTimeSimulation(1)
+    p.setRealTimeSimulation(1)
 
-while True:
-    p.stepSimulation()
-    time.sleep(1./240.)
+    p.resetBasePositionAndOrientation(rob1, [7, 0, 1], [0, 0, 0, 1])
+    start_pos, orn = p.getBasePositionAndOrientation(rob1)
 
+    # iterate 
+    elapsed_time = 0
+    wait_time = 1.0/240 # seconds
+    total_time = 30 # seconds
+    step = 0
+
+
+    while True:
+        p.stepSimulation()
+        step += 1
+        if step % 24 == 0:
+            motors = cr.get_motors()
+            assert len(motors) == p.getNumJoints(rob1), "Something went wrong"
+            for jid in range(p.getNumJoints(rob1)):
+                mode = p.VELOCITY_CONTROL
+                vel = motors[jid].get_output()
+                p.setJointMotorControl2(rob1, 
+                            jid,  
+                            controlMode=mode, 
+                            targetVelocity=vel)
+            new_pos, orn = p.getBasePositionAndOrientation(rob1)
+            #print(new_pos)
+            # dist_moved = np.linalg.norm(np.asarray(start_pos) - np.asarray(new_pos))
+            #adpt so that it measures distance towards mountain peak
+            peak_position = np.array([0, 0, 5])
+            dist_moved = np.linalg.norm(np.asarray(start_pos) - peak_position) - np.linalg.norm(np.asarray(new_pos) - peak_position)
+            
+            print(dist_moved)
+        time.sleep(wait_time)
+        elapsed_time += wait_time
+        if elapsed_time > total_time:
+            break
+
+    print("TOTAL DISTANCE MOVED:", dist_moved)
+
+if __name__ == "__main__":
+    run_sandbox()

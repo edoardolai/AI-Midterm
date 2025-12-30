@@ -1,5 +1,6 @@
 import pybullet as p
 from multiprocessing import Pool
+import cw_envt_copy
 
 class Simulation: 
     def __init__(self, sim_id=0):
@@ -35,7 +36,6 @@ class Simulation:
             #print(pos[2])
             #print(cr.get_distance_travelled())
         
-    
     def update_motors(self, cid, cr):
         """
         cid is the id in the physics engine
@@ -99,3 +99,47 @@ class ThreadedSim():
                 # self.creatures array
                 new_creatures.extend(creatures)
         pop.creatures = new_creatures
+
+class SimulationMountain(Simulation):
+    """Simulation with mountain environment and peak target"""
+    
+    def __init__(self, sim_id=0, peak_position=(0, 0, 5)):
+        super().__init__(sim_id)
+        self.peak_position = peak_position
+    
+    def run_creature(self, cr, iterations=2400):
+        # Set target before running
+        cr.set_target(self.peak_position)
+        
+        pid = self.physicsClientId
+        p.resetSimulation(physicsClientId=pid)
+        p.setPhysicsEngineParameter(enableFileCaching=0, physicsClientId=pid)
+        
+        p.setGravity(0, 0, -10, physicsClientId=pid)
+        plane_shape = p.createCollisionShape(p.GEOM_PLANE, physicsClientId=pid)
+        p.createMultiBody(plane_shape, plane_shape, physicsClientId=pid)
+        
+        # Load mountain
+        p.setAdditionalSearchPath('shapes/', physicsClientId=pid)
+        mountain_position = (0, 0, -1)
+        mountain_orientation = p.getQuaternionFromEuler((0, 0, 0))
+        p.loadURDF("gaussian_pyramid.urdf", mountain_position, 
+                   mountain_orientation, useFixedBase=1, physicsClientId=pid)
+        
+        xml_file = 'temp' + str(self.sim_id) + '.urdf'
+        xml_str = cr.to_xml()
+        with open(xml_file, 'w') as f:
+            f.write(xml_str)
+        
+        cid = p.loadURDF(xml_file, physicsClientId=pid)
+        # Start creature away from mountain base
+        p.resetBasePositionAndOrientation(cid, [-7, 0, 2.5], [0, 0, 0, 1], physicsClientId=pid)
+        
+        for step in range(iterations):
+            p.stepSimulation(physicsClientId=pid)
+            if step % 24 == 0:
+                self.update_motors(cid=cid, cr=cr)
+            pos, orn = p.getBasePositionAndOrientation(cid, physicsClientId=pid)
+            cr.update_position(pos)
+
+

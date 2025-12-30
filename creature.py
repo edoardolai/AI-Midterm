@@ -40,6 +40,10 @@ class Creature:
         self.motors = None
         self.start_position = None
         self.last_position = None
+        self.target_position = None
+
+    def set_target(self, pos):
+        self.target_position = pos
 
     def get_flat_links(self):
         if self.flat_links == None:
@@ -105,6 +109,35 @@ class Creature:
             dist = dist * 0.5
         
         return dist 
+    
+    def get_fitness(self):
+
+        if self.start_position is None or self.last_position is None:
+         return 0
+
+        # In case of no targetfall back to distance travelled (for retro compatibility)
+        if self.target_position is None:
+         return self.get_distance_travelled()
+
+        p1 = np.asarray(self.start_position)
+        p2 = np.asarray(self.last_position)
+        target = np.asarray(self.target_position)
+
+        # calculate fitness based on progress towards target
+        initial_dist_to_target = np.linalg.norm(p1 - target)
+        final_dist_to_target = np.linalg.norm(p2 - target)
+
+        progress = initial_dist_to_target - final_dist_to_target
+
+        # penaltiy for flying/jumping
+        if abs(p2[2] - p1[2]) > 2:
+            progress = progress * 0.5
+
+        
+        fitness = max(0, progress + initial_dist_to_target * 0.1)
+        
+        return fitness
+    
 
     def update_dna(self, dna):
         self.dna = dna
@@ -113,3 +146,4 @@ class Creature:
         self.motors = None
         self.start_position = None
         self.last_position = None
+

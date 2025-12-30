@@ -10,22 +10,29 @@ import simulation
 import genome 
 import creature 
 import numpy as np
-import time
 
 class TestGA(unittest.TestCase):
     def testBasicGA(self):
         pop = population.Population(pop_size=40, 
                                     gene_count=5)
-        sim = simulation.Simulation()
+        sim = simulation.SimulationMountain(peak_position=(0, 0, 5))
 
         # tracking global best
         best_ever_fitness = 0
         best_ever_dna = None
-
+        generations_wihtout_improvement = 0
+        max_generations_without_improvement = 75
         for iteration in range(1000):
+            print(f"Generation {iteration}")
+            print(f"  Generations without improvement: {generations_wihtout_improvement}")
+            generations_wihtout_improvement += 1
+            # early stopping if no improvement for many generations
+            if generations_wihtout_improvement >= max_generations_without_improvement:
+                print(f"No improvement for {max_generations_without_improvement} generations, stopping early at generation {iteration}.")
+                break
             for cr in pop.creatures:
                 sim.run_creature(cr, 2400)            
-            fits = [cr.get_distance_travelled() 
+            fits = [cr.get_fitness() 
                     for cr in pop.creatures]
             links = [len(cr.get_expanded_links()) 
                     for cr in pop.creatures]
@@ -39,12 +46,11 @@ class TestGA(unittest.TestCase):
             #2 append to the log file the iteration number, fittest, mean fitness, mean links, max links
             if iteration == 0:
                         import time
-                        timestamp = int(time.time())
-                        fmt_timestamp = time.strftime("%Y-%m-%d_%H-%M-%S")
-                        with open(f"iteration_logs_{fmt_timestamp}.csv", "w") as f:
+                        timestamp = time.strftime("%Y-%m-%d_%H-%M-%S")
+                        with open(f"iteration_logs_{timestamp}.csv", "w") as f:
                             f.write("iteration,fittest,mean_fitness,mean_links,max_links\n")
            
-            with open(f"iteration_logs_{fmt_timestamp}.csv", "a") as f:
+            with open(f"iteration_logs_{timestamp}.csv", "a") as f:
                 f.write(f"{iteration},{np.max(fits)},{np.mean(fits)},{np.mean(links)},{np.max(links)}\n")
             
             print(iteration, "fittest:", np.round(np.max(fits), 3), 
@@ -53,9 +59,10 @@ class TestGA(unittest.TestCase):
             # updating   global best if new found
             max_fit = np.max(fits)
             if max_fit > best_ever_fitness:
+                generations_wihtout_improvement = 0
                 best_ever_fitness = max_fit
                 for cr in pop.creatures:
-                    if cr.get_distance_travelled() == max_fit:
+                    if cr.get_fitness() == max_fit:
                         best_ever_dna = cr.dna.copy()
                         genome.Genome.to_csv(best_ever_dna, "best_ever.csv")
                         print(f"  NEW BEST: {best_ever_fitness:.3f}")
@@ -66,6 +73,9 @@ class TestGA(unittest.TestCase):
             for i in range(len(pop.creatures)):
                 p1_ind = population.Population.select_parent(fit_map)
                 p2_ind = population.Population.select_parent(fit_map)
+                #debugging list indices must be integers or slices, not NoneType
+                # print(f"p1_ind: {p1_ind}, p2_ind: {p2_ind}")
+                #issue was negativa values in fitness map
                 p1 = pop.creatures[p1_ind]
                 p2 = pop.creatures[p2_ind]
                 dna = genome.Genome.crossover(p1.dna, p2.dna)
@@ -87,3 +97,4 @@ class TestGA(unittest.TestCase):
         self.assertNotEqual(fits[0], 0)
 
 unittest.main()
+
