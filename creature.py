@@ -99,6 +99,11 @@ class Creature:
         p1 = np.asarray(self.start_position)
         p2 = np.asarray(self.last_position)
         dist = np.linalg.norm(p1-p2)
+        
+        #penalize jumps/flying behaviors
+        if abs(p2[2] - p1[2]) > 2:
+            dist = dist * 0.5
+        
         return dist 
 
     def update_dna(self, dna):
