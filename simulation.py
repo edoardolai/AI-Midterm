@@ -135,8 +135,8 @@ class SimulationMountain(Simulation):
         # Generation 0 | Stagnant: 0
         # Traceback (most recent call last):
         #   File "/Users/edoardo/AI-Midterm/src/ga_param_test.py", line 73, in <module>
-        #     results = run_sweep(param_name, values)
-        #   File "/Users/edoardo/AI-Midterm/src/ga_param_test.py", line 40, in run_sweep
+        #     results = (param_name, values)
+        #   File "/Users/edoardo/AI-Midterm/src/ga_param_test.py", line 40, in 
         #     result = run_ga_experiment(config=config, output_dir=str(run_dir), verbose=True)
         #   File "/Users/edoardo/AI-Midterm/src/test_ga_no_threads.py", line 92, in run_ga_experiment
         #     sim.run_creature(cr, cfg['simulation_iterations'])
