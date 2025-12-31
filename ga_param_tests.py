@@ -14,7 +14,7 @@ EXPERIMENTS = {
     'point_mutate_amount': [0.05, 0.1, 0.25, 0.5],
     'shrink_mutate_rate': [0.1, 0.15, 0.25, 0.35],
     'grow_mutate_rate': [0.05, 0.1, 0.15, 0.25],
-    'elitism_count': [0, 1, 2, 3],
+    'elitism_count': [1, 2, 3, 5],
 }
 
 NUM_TRIALS = 3

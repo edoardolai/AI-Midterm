@@ -1,5 +1,8 @@
-# this version works on M1 macs and windows
-# the multithreaded one doesnt work so use this instead
+# If you on a Windows machine with any Python version
+# or an M1 mac with any Python version
+# or an Intel Mac with Python > 3.7
+# the multi-threaded version does not work
+# so instead, you can use this version.
 
 import unittest
 import population
