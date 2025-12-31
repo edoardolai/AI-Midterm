@@ -110,36 +110,58 @@ class SimulationMountain(Simulation):
     def run_creature(self, cr, iterations=2400):
         # Set target before running
         cr.set_target(self.peak_position)
-        
+
         pid = self.physicsClientId
         p.resetSimulation(physicsClientId=pid)
         p.setPhysicsEngineParameter(enableFileCaching=0, physicsClientId=pid)
-        
+
         p.setGravity(0, 0, -10, physicsClientId=pid)
         plane_shape = p.createCollisionShape(p.GEOM_PLANE, physicsClientId=pid)
         p.createMultiBody(plane_shape, plane_shape, physicsClientId=pid)
-        
+
         # Load mountain
         p.setAdditionalSearchPath('shapes/', physicsClientId=pid)
         mountain_position = (0, 0, -1)
         mountain_orientation = p.getQuaternionFromEuler((0, 0, 0))
-        p.loadURDF("gaussian_pyramid.urdf", mountain_position, 
+        p.loadURDF("gaussian_pyramid.urdf", mountain_position,
                    mountain_orientation, useFixedBase=1, physicsClientId=pid)
-        
+
         xml_file = 'temp' + str(self.sim_id) + '.urdf'
         xml_str = cr.to_xml()
         with open(xml_file, 'w') as f:
             f.write(xml_str)
-        
-        cid = p.loadURDF(xml_file, physicsClientId=pid)
-        # Start creature away from mountain base
-        p.resetBasePositionAndOrientation(cid, [-7, 0, 2.5], [0, 0, 0, 1], physicsClientId=pid)
-        
-        for step in range(iterations):
-            p.stepSimulation(physicsClientId=pid)
-            if step % 24 == 0:
-                self.update_motors(cid=cid, cr=cr)
-            pos, orn = p.getBasePositionAndOrientation(cid, physicsClientId=pid)
-            cr.update_position(pos)
+
+        #try except block added to handle:
+        # Generation 0 | Stagnant: 0
+        # Traceback (most recent call last):
+        #   File "/Users/edoardo/AI-Midterm/src/ga_param_test.py", line 73, in <module>
+        #     results = run_sweep(param_name, values)
+        #   File "/Users/edoardo/AI-Midterm/src/ga_param_test.py", line 40, in run_sweep
+        #     result = run_ga_experiment(config=config, output_dir=str(run_dir), verbose=True)
+        #   File "/Users/edoardo/AI-Midterm/src/test_ga_no_threads.py", line 92, in run_ga_experiment
+        #     sim.run_creature(cr, cfg['simulation_iterations'])
+        #   File "/Users/edoardo/AI-Midterm/src/simulation.py", line 142, in run_creature
+        #     pos, orn = p.getBasePositionAndOrientation(cid, physicsClientId=pid)
+        # pybullet.error: GetBasePositionAndOrientation failed.
+        try:
+            cid = p.loadURDF(xml_file, physicsClientId=pid)
+            if cid < 0:
+                # Failed to load, give creature zero fitness
+                cr.update_position([-7, 0, 2.5])
+                return
+
+            # Start creature away from mountain base
+            p.resetBasePositionAndOrientation(cid, [-7, 0, 2.5], [0, 0, 0, 1], physicsClientId=pid)
+
+            for step in range(iterations):
+                p.stepSimulation(physicsClientId=pid)
+                if step % 24 == 0:
+                    self.update_motors(cid=cid, cr=cr)
+                pos, orn = p.getBasePositionAndOrientation(cid, physicsClientId=pid)
+                cr.update_position(pos)
+        except Exception as e:
+            # Creature too complex or invalid - give it zero fitness
+            print(f"  [Warning] Creature failed to simulate: {e}")
+            cr.update_position([-7, 0, 2.5])
 
 

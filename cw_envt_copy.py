@@ -85,18 +85,18 @@ def run_sandbox():
 
     # load creature from csv
     cr = creature.Creature(1)
-    cr.update_dna(genome.Genome.from_csv("best_ever.csv"))
+    cr.update_dna(genome.Genome.from_csv("best_ever_copy.csv"))
 
     # save it to XML
     with open('test.urdf', 'w') as f:
         f.write(cr.to_xml())
     # load it into the sim
-    rob1 = p.loadURDF('test.urdf', (0, 0, 10))
+    rob1 = p.loadURDF('test.urdf', (-7, 0, 2.5))
+    p.resetBasePositionAndOrientation(rob1, [-7, 0, 2.5], [0, 0, 0, 1])
 
 
     p.setRealTimeSimulation(1)
 
-    p.resetBasePositionAndOrientation(rob1, [7, 0, 1], [0, 0, 0, 1])
     start_pos, orn = p.getBasePositionAndOrientation(rob1)
 
     # iterate 
@@ -125,7 +125,7 @@ def run_sandbox():
             #adpt so that it measures distance towards mountain peak
             peak_position = np.array([0, 0, 5])
             dist_moved = np.linalg.norm(np.asarray(start_pos) - peak_position) - np.linalg.norm(np.asarray(new_pos) - peak_position)
-            
+
             print(dist_moved)
         time.sleep(wait_time)
         elapsed_time += wait_time
