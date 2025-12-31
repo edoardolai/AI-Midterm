@@ -1,5 +1,5 @@
 """
-Plot results from parameter sweep experiments.
+Plot results from parameter experiments.
 """
 
 import pandas as pd
