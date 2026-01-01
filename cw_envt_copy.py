@@ -6,9 +6,22 @@ import random
 import creature
 import math
 import genome
+import sys
 
 p.connect(p.GUI)
 p.setAdditionalSearchPath(pybullet_data.getDataPath())
+
+# shape configs for viewing creatures from the experiments
+# NOTE: the shape isnt stored in the DNA, its determined when generating the URDF
+# I realized we need to set this before loading a creature or it will just show cylinders (even though the experiments ran with other shapes)
+SHAPE_CONFIGS = {
+    'all_cylinder': {'base_shape': 'cylinder', 'limb_shape': 'cylinder'},
+    'all_box': {'base_shape': 'box', 'limb_shape': 'box'},
+    'all_sphere': {'base_shape': 'sphere', 'limb_shape': 'sphere'},
+    'box_base_cyl_limbs': {'base_shape': 'box', 'limb_shape': 'cylinder'},
+    'sphere_base_cyl_limbs': {'base_shape': 'sphere', 'limb_shape': 'cylinder'},
+    'cyl_base_box_limbs': {'base_shape': 'cylinder', 'limb_shape': 'box'},
+}
 
 
 
@@ -64,7 +77,16 @@ def make_arena(arena_size=10, wall_height=1):
     p.createMultiBody(baseMass=0, baseCollisionShapeIndex=wall_collision_shape, baseVisualShapeIndex=wall_visual_shape, basePosition=[arena_size/2, 0, wall_height/2])
     p.createMultiBody(baseMass=0, baseCollisionShapeIndex=wall_collision_shape, baseVisualShapeIndex=wall_visual_shape, basePosition=[-arena_size/2, 0, wall_height/2])
 
-def run_sandbox():
+#refactoring this in a function to allow different csvs and shape configs when testing different best cretures
+def run_sandbox(csv_file="best_ever_copy.csv", shape_config="all_cylinder"):
+    # gotta set shape before making the creature or everything shows as cylinders
+    if shape_config in SHAPE_CONFIGS:
+        genome.set_encoding_config(SHAPE_CONFIGS[shape_config])
+        print(f"Shape: {shape_config}")
+    else:
+        print(f"Unknown config '{shape_config}', defaulting to cylinders")
+        print(f"Options: {list(SHAPE_CONFIGS.keys())}")
+
     p.setGravity(0, 0, -10)
 
     arena_size = 20
@@ -85,7 +107,7 @@ def run_sandbox():
 
     # load creature from csv
     cr = creature.Creature(1)
-    cr.update_dna(genome.Genome.from_csv("best_ever_copy.csv"))
+    cr.update_dna(genome.Genome.from_csv(csv_file))
 
     # save it to XML
     with open('test.urdf', 'w') as f:
@@ -135,4 +157,8 @@ def run_sandbox():
     print("TOTAL DISTANCE MOVED:", dist_moved)
 
 if __name__ == "__main__":
-    run_sandbox()
+    # usage: python cw_envt_copy.py [csv_file] [shape_config]
+    # e.g. python cw_envt_copy.py best_ever.csv all_box
+    csv_file = sys.argv[1] if len(sys.argv) > 1 else "best_ever_copy.csv"
+    shape_config = sys.argv[2] if len(sys.argv) > 2 else "all_cylinder"
+    run_sandbox(csv_file, shape_config)

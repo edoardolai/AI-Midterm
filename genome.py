@@ -1,6 +1,28 @@
 import numpy as np
-import copy 
+import copy
 import random
+
+# encoding config for the shape experiments
+# basically lets us swap between cylinder/box/sphere for different body parts
+ENCODING_CONFIG = {
+    'base_shape': 'cylinder',  # the main body (root link)
+    'limb_shape': 'cylinder',  # everything else
+}
+
+def set_encoding_config(config):
+    global ENCODING_CONFIG
+    ENCODING_CONFIG.update(config)
+
+def get_encoding_config():
+    return ENCODING_CONFIG.copy()
+
+def reset_encoding_config():
+    # back to defaults
+    global ENCODING_CONFIG
+    ENCODING_CONFIG = {
+        'base_shape': 'cylinder',
+        'limb_shape': 'cylinder',
+    }
 
 class Genome():
     @staticmethod 
@@ -84,11 +106,11 @@ class Genome():
             parent_name = parent_names[int(parent_ind)]
             #print("available parents: ", parent_names, "chose", parent_name)
             recur = gdict["link-recurrence"]
-            link = URDFLink(name=link_name, 
-                            parent_name=parent_name, 
-                            recur=recur+1, 
-                            link_length=gdict["link-length"], 
-                            link_radius=gdict["link-radius"], 
+            link = URDFLink(name=link_name,
+                            parent_name=parent_name,
+                            recur=recur+1,
+                            link_length=gdict["link-length"],
+                            link_radius=gdict["link-radius"],
                             link_mass=gdict["link-mass"],
                             joint_type=gdict["joint-type"],
                             joint_parent=gdict["joint-parent"],
@@ -101,7 +123,8 @@ class Genome():
                             joint_origin_xyz_3=gdict["joint-origin-xyz-3"],
                             control_waveform=gdict["control-waveform"],
                             control_amp=gdict["control-amp"],
-                            control_freq=gdict["control-freq"])
+                            control_freq=gdict["control-freq"],
+                            is_root=(link_ind == 0))
             links.append(link)
             if link_ind != 0:# don't re-add the first link
                 parent_names.append(link_name)
@@ -183,9 +206,9 @@ class Genome():
         return dna
 
 class URDFLink:
-    def __init__(self, name, parent_name, recur, 
-                link_length=0.1, 
-                link_radius=0.1, 
+    def __init__(self, name, parent_name, recur,
+                link_length=0.1,
+                link_radius=0.1,
                 link_mass=0.1,
                 joint_type=0.1,
                 joint_parent=0.1,
@@ -198,11 +221,12 @@ class URDFLink:
                 joint_origin_xyz_3=0.1,
                 control_waveform=0.1,
                 control_amp=0.1,
-                control_freq=0.1):
+                control_freq=0.1,
+                is_root=False):
         self.name = name
         self.parent_name = parent_name
-        self.recur = recur 
-        self.link_length=link_length 
+        self.recur = recur
+        self.link_length=link_length
         self.link_radius=link_radius
         self.link_mass=link_mass
         self.joint_type=joint_type
@@ -218,57 +242,53 @@ class URDFLink:
         self.control_amp=control_amp
         self.control_freq=control_freq
         self.sibling_ind = 1
+        self.is_root = is_root
+
+    def _make_shape(self, adom, shape):
+        # helper to create the right geometry element
+        if shape == 'box':
+            elem = adom.createElement("box")
+            # box uses size="x y z" format
+            size = f"{self.link_radius*2} {self.link_radius*2} {self.link_length}"
+            elem.setAttribute("size", size)
+        elif shape == 'sphere':
+            elem = adom.createElement("sphere")
+            # just average the dimensions for sphere radius, seems to work ok
+            radius = (self.link_length + self.link_radius) / 2
+            elem.setAttribute("radius", str(radius))
+        else:
+            # default cylinder
+            elem = adom.createElement("cylinder")
+            elem.setAttribute("length", str(self.link_length))
+            elem.setAttribute("radius", str(self.link_radius))
+        return elem
 
     def to_link_element(self, adom):
-        #         <link name="base_link">
-        #     <visual>
-        #       <geometry>
-        #         <cylinder length="0.6" radius="0.25"/>
-        #       </geometry>
-        #     </visual>
-        #     <collision>
-        #       <geometry>
-        #         <cylinder length="0.6" radius="0.25"/>
-        #       </geometry>
-        #     </collision>
-        #     <inertial>
-        # 	    <mass value="0.25"/>
-        # 	    <inertia ixx="0.0003" iyy="0.0003" izz="0.0003" ixy="0" ixz="0" iyz="0"/>
-        #     </inertial>
-        #   </link>
-  
+        # figure out which shape to use based on config
+        config = get_encoding_config()
+        shape = config['base_shape'] if self.is_root else config['limb_shape']
+
         link_tag = adom.createElement("link")
         link_tag.setAttribute("name", self.name)
+
+        # visual
         vis_tag = adom.createElement("visual")
         geom_tag = adom.createElement("geometry")
-        cyl_tag = adom.createElement("cylinder")
-        cyl_tag.setAttribute("length", str(self.link_length))
-        cyl_tag.setAttribute("radius", str(self.link_radius))
-        
-        geom_tag.appendChild(cyl_tag)
+        geom_tag.appendChild(self._make_shape(adom, shape))
         vis_tag.appendChild(geom_tag)
-        
-        
+
+        # collision (same shape)
         coll_tag = adom.createElement("collision")
         c_geom_tag = adom.createElement("geometry")
-        c_cyl_tag = adom.createElement("cylinder")
-        c_cyl_tag.setAttribute("length", str(self.link_length))
-        c_cyl_tag.setAttribute("radius", str(self.link_radius))
-        
-        c_geom_tag.appendChild(c_cyl_tag)
+        c_geom_tag.appendChild(self._make_shape(adom, shape))
         coll_tag.appendChild(c_geom_tag)
-        
-        #     <inertial>
-        # 	    <mass value="0.25"/>
-        # 	    <inertia ixx="0.0003" iyy="0.0003" izz="0.0003" ixy="0" ixz="0" iyz="0"/>
-        #     </inertial>
+
+        # inertial stuff - using cylinder formula for mass, close enough for other shapes
         inertial_tag = adom.createElement("inertial")
         mass_tag = adom.createElement("mass")
-        # pi r^2 * height
         mass = np.pi * (self.link_radius * self.link_radius) * self.link_length
         mass_tag.setAttribute("value", str(mass))
         inertia_tag = adom.createElement("inertia")
-        # <inertia ixx="0.0003" iyy="0.0003" izz="0.0003" ixy="0" ixz="0" iyz="0"/>
         inertia_tag.setAttribute("ixx", "0.03")
         inertia_tag.setAttribute("iyy", "0.03")
         inertia_tag.setAttribute("izz", "0.03")
@@ -277,12 +297,11 @@ class URDFLink:
         inertia_tag.setAttribute("iyx", "0")
         inertial_tag.appendChild(mass_tag)
         inertial_tag.appendChild(inertia_tag)
-        
 
         link_tag.appendChild(vis_tag)
         link_tag.appendChild(coll_tag)
         link_tag.appendChild(inertial_tag)
-        
+
         return link_tag
 
     def to_joint_element(self, adom):
