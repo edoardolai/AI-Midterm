@@ -8,7 +8,7 @@ class MotorType(Enum):
     SINE = 2
 
 class Motor:
-    def __init__(self, control_waveform, control_amp, control_freq):
+    def __init__(self, control_waveform, control_amp, control_freq, sensor_weight=0):
         if control_waveform <= 0.5:
             self.motor_type = MotorType.PULSE
         else:
@@ -16,19 +16,26 @@ class Motor:
         self.amp = control_amp
         self.freq = control_freq
         self.phase = 0
-    
+        self.sensor_weight = sensor_weight  # how much this motor responds to direction sensor
 
-    def get_output(self):
+
+    def get_output(self, sensor_signal=0):
         self.phase = (self.phase + self.freq) % (np.pi * 2)
         if self.motor_type == MotorType.PULSE:
             if self.phase < np.pi:
                 output = 1
             else:
                 output = -1
-            
+
         if self.motor_type == MotorType.SINE:
             output = np.sin(self.phase)
-        
+
+        # modulate output based on sensor input (if we have any)
+        # sensor_signal is like -1 to 1 (direction to peak)
+        # sensor_weight controls how much the motor cares about it
+        if self.sensor_weight > 0 and sensor_signal != 0:
+            output = output * (1 + self.sensor_weight * sensor_signal)
+
         return output 
 
 class Creature:
@@ -86,9 +93,10 @@ class Creature:
             motors = []
             for i in range(1, len(self.exp_links)):
                 l = self.exp_links[i]
-                m = Motor(l.control_waveform, l.control_amp,  l.control_freq)
+                # pass sensor_weight so motors can respond to direction sensor
+                m = Motor(l.control_waveform, l.control_amp, l.control_freq, l.sensor_weight)
                 motors.append(m)
-            self.motors = motors 
+            self.motors = motors
         return self.motors 
     
     def update_position(self, pos):

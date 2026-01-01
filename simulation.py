@@ -1,6 +1,7 @@
 import pybullet as p
 from multiprocessing import Pool
-import cw_envt_copy
+import numpy as np
+import genome
 
 class Simulation: 
     def __init__(self, sim_id=0):
@@ -163,5 +164,43 @@ class SimulationMountain(Simulation):
             # Creature too complex or invalid - give it zero fitness
             print(f"  [Warning] Creature failed to simulate: {e}")
             cr.update_position([-7, 0, 2.5])
+
+    def _calc_direction_signal(self, pos):
+        """
+        figure out how much the creature is facing the peak
+        returns -1 (facing away) to +1 (facing toward)
+         just looks at x direction toward peak
+        """
+        if self.peak_position is None:
+            return 0
+        dx = self.peak_position[0] - pos[0]
+        dy = self.peak_position[1] - pos[1]
+        dist = np.sqrt(dx*dx + dy*dy)
+        if dist < 0.1:
+            return 0  # close enough, no signal needed
+        # normalize x component to -1 to 1
+        return np.clip(dx / dist, -1, 1)
+
+    def update_motors(self, cid, cr):
+        """
+        same as parent but passes sensor signal to motors
+        so creatures can 'feel' which way the peak is
+        """
+        # check if sensors are even enabled
+        config = genome.get_encoding_config()
+        use_sensors = config.get('use_sensors', True)
+
+        # get creature position for sensor calc
+        pos, orn = p.getBasePositionAndOrientation(cid, physicsClientId=self.physicsClientId)
+        sensor_signal = self._calc_direction_signal(pos) if use_sensors else 0
+
+        for jid in range(p.getNumJoints(cid, physicsClientId=self.physicsClientId)):
+            m = cr.get_motors()[jid]
+            # pass the sensor signal so motor can use it (if it wants to)
+            p.setJointMotorControl2(cid, jid,
+                    controlMode=p.VELOCITY_CONTROL,
+                    targetVelocity=m.get_output(sensor_signal),
+                    force=5,
+                    physicsClientId=self.physicsClientId)
 
 

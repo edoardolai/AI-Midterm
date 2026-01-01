@@ -1,0 +1,7 @@
+experiment,config,trial,best_fitness,generations_run,converged_at
+sensory_input,no_sensor,0,2.599338811184964,176,99
+sensory_input,no_sensor,1,2.5588943570956966,211,134
+sensory_input,no_sensor,2,2.7651962028908983,495,418
+sensory_input,with_sensor,0,2.6084693622052315,294,217
+sensory_input,with_sensor,1,2.5993789260695666,135,58
+sensory_input,with_sensor,2,3.166187540504146,340,263

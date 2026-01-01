@@ -2,11 +2,13 @@ import numpy as np
 import copy
 import random
 
-# encoding config for the shape experiments
-# basically lets us swap between cylinder/box/sphere for different body parts
+# encoding config for experiments
+# shapes: cylinder/box/sphere for different body parts
+# sensors: whether motors can sense direction to peak
 ENCODING_CONFIG = {
-    'base_shape': 'cylinder',  # the main body (root link)
-    'limb_shape': 'cylinder',  # everything else
+    'base_shape': 'cylinder',
+    'limb_shape': 'cylinder',
+    'use_sensors': True,  # if false, sensors are disabled even if sensor_weight > 0
 }
 
 def set_encoding_config(config):
@@ -17,11 +19,11 @@ def get_encoding_config():
     return ENCODING_CONFIG.copy()
 
 def reset_encoding_config():
-    # back to defaults
     global ENCODING_CONFIG
     ENCODING_CONFIG = {
         'base_shape': 'cylinder',
         'limb_shape': 'cylinder',
+        'use_sensors': True,
     }
 
 class Genome():
@@ -53,7 +55,8 @@ class Genome():
             "joint-origin-xyz-3":{"scale":1},
             "control-waveform":{"scale":1},
             "control-amp":{"scale":0.25},
-            "control-freq":{"scale":1}
+            "control-freq":{"scale":1},
+            "sensor-weight":{"scale":1}  # how much motor responds to direction sensor
             }
         ind = 0
         for key in gene_spec.keys():
@@ -124,6 +127,7 @@ class Genome():
                             control_waveform=gdict["control-waveform"],
                             control_amp=gdict["control-amp"],
                             control_freq=gdict["control-freq"],
+                            sensor_weight=gdict["sensor-weight"],
                             is_root=(link_ind == 0))
             links.append(link)
             if link_ind != 0:# don't re-add the first link
@@ -222,6 +226,7 @@ class URDFLink:
                 control_waveform=0.1,
                 control_amp=0.1,
                 control_freq=0.1,
+                sensor_weight=0.0,
                 is_root=False):
         self.name = name
         self.parent_name = parent_name
@@ -241,6 +246,7 @@ class URDFLink:
         self.control_waveform=control_waveform
         self.control_amp=control_amp
         self.control_freq=control_freq
+        self.sensor_weight=sensor_weight
         self.sibling_ind = 1
         self.is_root = is_root
 
