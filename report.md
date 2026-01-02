@@ -301,7 +301,9 @@ except Exception as e:
 
 ```
 
-espite these challenges, several trends emerged that were consistent across multiple runs. Larger populations and higher gene counts often achieved better peak fitness because they increased diversity and allowed more complex morphologies to be explored. However, this came at a high computational cost and sometimes resulted in diminishing returns, where additional complexity did not translate into better climbing behavior. Lower mutation rates and smaller mutation amounts consistently performed better, suggesting that once a reasonable morphology was discovered, fine-grained local search was more effective than aggressive exploration. Increased elitism also helped, especially for this difficult task, because good partial solutions were preserved long enough to be refined rather than destroyed by mutation.
+Despite these challenges, several trends emerged that were consistent across multiple runs. Larger populations and higher gene counts often achieved better peak fitness because they increased diversity and allowed more complex morphologies to be explored. However, this came at a high computational cost and sometimes resulted in diminishing returns, where additional complexity did not translate into better climbing behavior. Lower mutation rates and smaller mutation amounts consistently performed better, suggesting that once a reasonable morphology was discovered, fine-grained local search was more effective than aggressive exploration. Increased elitism also helped, especially for this difficult task, because good partial solutions were preserved long enough to be refined rather than destroyed by mutation.
+
+An interesting observation worth mentioning is that some creature seemed to exploit the arena edges to orientate themselfs by slightly bumping against it until they found a better orientation that would grant higher score (this observation will be the base upon which I chose my extension)
 
 After all 84 runs completed, I used `plot_results.py` to generate visualizations. Here's the summary of best parameter values found:
 
@@ -409,7 +411,7 @@ Another insight was that morphology alone rarely solved the climbing problem. Ev
 
 ## Exceptional Grade Extension: Sensory Input
 
-For the exceptional grade criteria, I implemented a sensory input extension. Currently, motors oscillate blindly without environmental awareness. My extension adds a **direction sensor** that tells each motor which way the peak is.
+For the exceptional grade criteria, I implemented a sensory input extension. Currently, motors oscillate blindly without environmental awareness. My extension adds a **direction sensor** that tells each motor which way the peak is. The idea came after the observation that some creatures exploited arena edges to orient themselves. I wanted to build up on what seemed a interesting natural emergent and give more structure to this.
 
 ### The concept
 
