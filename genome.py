@@ -70,7 +70,12 @@ class Genome():
         for key in spec:
             ind = spec[key]["ind"]
             scale = spec[key]["scale"]
-            gdict[key] = gene[ind] * scale
+            # backward compat: if gene is shorter than expected (old DNA without sensor-weight),
+            # use 0 for missing values
+            if ind < len(gene):
+                gdict[key] = gene[ind] * scale
+            else:
+                gdict[key] = 0  # default for missing genes
         return gdict
 
     @staticmethod
